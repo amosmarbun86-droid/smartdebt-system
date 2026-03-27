@@ -7,7 +7,8 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, where, onSnapshot, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB4NeM9zeHT4SZEPv_pdAENHoZAi_MtDlw",
@@ -21,6 +22,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
+
+let dataGlobal = [];
 
 window.login = async function(){
     let email = document.getElementById("email").value;
@@ -35,41 +39,118 @@ window.login = async function(){
 
 window.tambah = async function(){
     let nama = document.getElementById("nama").value;
-    let jumlah = document.getElementById("jumlah").value;
+    let jumlah = Number(document.getElementById("jumlah").value);
+    let persen = Number(document.getElementById("persen").value);
     let tanggal = document.getElementById("tanggal").value;
+    let jatuh = document.getElementById("jatuh").value;
+    let file = document.getElementById("foto").files[0];
     let user = auth.currentUser.email;
 
-    await addDoc(collection(db, "smartdebt"), {
-        nama: nama,
-        jumlah: jumlah,
-        tanggal: tanggal,
-        status: "belum",
-        user: user
-    });
+    let total = jumlah + (jumlah * persen / 100);
+    let buktiURL = "";
 
-    tampil();
+    if(file){
+        try{
+            const storageRef = ref(storage, 'bukti/' + file.name);
+            await uploadBytes(storageRef, file);
+            buktiURL = await getDownloadURL(storageRef);
+        }catch(e){
+            alert("Upload foto gagal (storage belum aktif)");
+        }
+    }
+
+    await addDoc(collection(db, "smartdebt"), {
+        nama, jumlah, persen, total, tanggal, jatuh,
+        bukti: buktiURL,
+        status: "belum",
+        user
+    });
+}
+
+window.lunas = async function(id){
+    await updateDoc(doc(db, "smartdebt", id), { status: "lunas" });
+}
+
+window.hapus = async function(id){
+    await deleteDoc(doc(db, "smartdebt", id));
 }
 
 function tampil(){
     let user = auth.currentUser.email;
-
     const q = query(collection(db, "smartdebt"), where("user","==",user));
 
-    onSnapshot(q, (snapshot)=>{
+    onSnapshot(q, (snap)=>{
         let html="";
-        snapshot.forEach((doc)=>{
-            let d = doc.data();
+        let totalPiutang=0;
+        dataGlobal=[];
+
+        snap.forEach((docSnap)=>{
+            let d = docSnap.data();
+            let id = docSnap.id;
+
+            dataGlobal.push(d);
+
+            if(d.status=="belum"){
+                totalPiutang += d.total;
+            }
+
             html += `
             <tr>
             <td>${d.nama}</td>
             <td>${d.jumlah}</td>
-            <td>${d.tanggal}</td>
+            <td>${d.persen}%</td>
+            <td>${d.total}</td>
+            <td>${d.jatuh}</td>
             <td>${d.status}</td>
+            <td>
+            ${d.bukti ? `<img src="${d.bukti}" width="40">` : '-'}
+            </td>
+            <td>
+            <button onclick="lunas('${id}')">Lunas</button>
+            <button onclick="hapus('${id}')">Hapus</button>
+            </td>
             </tr>
             `;
         });
-        document.getElementById("data").innerHTML=html;
+
+        document.getElementById("data").innerHTML = html;
+        document.getElementById("total").innerText = totalPiutang;
+
+        buatGrafik();
     });
+}
+
+window.exportPDF = function(){
+    let isi = "LAPORAN PIUTANG\n\n";
+    dataGlobal.forEach(d=>{
+        isi += `${d.nama} | ${d.total} | ${d.status}\n`;
+    });
+
+    let blob = new Blob([isi], {type:"text/plain"});
+    let a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "laporan.txt";
+    a.click();
+}
+
+function buatGrafik(){
+    let belum=0, lunas=0;
+
+    dataGlobal.forEach(d=>{
+        if(d.status=="belum") belum++;
+        else lunas++;
+    });
+
+    const canvas = document.getElementById("grafik");
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0,0,300,150);
+
+    ctx.fillRect(50,150-belum*20,50,belum*20);
+    ctx.fillText("Belum",50,140);
+
+    ctx.fillRect(150,150-lunas*20,50,lunas*20);
+    ctx.fillText("Lunas",150,140);
 }
 </script>
 
@@ -81,38 +162,55 @@ table { width:100%; border-collapse: collapse; }
 th, td { border:1px solid #ddd; padding:8px; text-align:center; }
 </style>
 </head>
+
 <body>
 
 <h2>SmartDebt System</h2>
 
 <div class="card" id="loginDiv">
 <h3>Login</h3>
-<input type="email" id="email" placeholder="Email">
-<input type="password" id="password" placeholder="Password">
+<input type="email" id="email">
+<input type="password" id="password">
 <button onclick="login()">Login</button>
 </div>
 
 <div id="app" style="display:none;">
+
 <div class="card">
 <input type="text" id="nama" placeholder="Nama">
-<input type="number" id="jumlah" placeholder="Jumlah">
+<input type="number" id="jumlah" placeholder="Pinjaman">
+<input type="number" id="persen" placeholder="Persen">
 <input type="date" id="tanggal">
-<button onclick="tambah()">Tambah Data</button>
+<input type="date" id="jatuh">
+<input type="file" id="foto">
+<button onclick="tambah()">Tambah</button>
 </div>
+
+<div class="card">
+Total Piutang: <b id="total">0</b>
+<button onclick="exportPDF()">Export Laporan</button>
+</div>
+
+<canvas id="grafik" width="300" height="150"></canvas>
 
 <div class="card">
 <table>
 <thead>
 <tr>
 <th>Nama</th>
-<th>Jumlah</th>
-<th>Tanggal</th>
+<th>Pinjaman</th>
+<th>%</th>
+<th>Total</th>
+<th>Jatuh Tempo</th>
 <th>Status</th>
+<th>Bukti</th>
+<th>Aksi</th>
 </tr>
 </thead>
 <tbody id="data"></tbody>
 </table>
 </div>
+
 </div>
 
 </body>
