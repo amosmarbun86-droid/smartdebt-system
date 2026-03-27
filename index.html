@@ -24,7 +24,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-let dataGlobal = [];
+let editId = null;
+let semuaData = [];
 
 window.login = async function(){
     let email = document.getElementById("email").value;
@@ -34,6 +35,7 @@ window.login = async function(){
 
     document.getElementById("loginDiv").style.display="none";
     document.getElementById("app").style.display="block";
+
     tampil();
 }
 
@@ -55,7 +57,7 @@ window.tambah = async function(){
             await uploadBytes(storageRef, file);
             buktiURL = await getDownloadURL(storageRef);
         }catch(e){
-            alert("Upload foto gagal (storage belum aktif)");
+            alert("Upload foto gagal");
         }
     }
 
@@ -65,6 +67,36 @@ window.tambah = async function(){
         status: "belum",
         user
     });
+}
+
+window.editData = function(id,nama,jumlah,persen,tanggal,jatuh){
+    document.getElementById("nama").value = nama;
+    document.getElementById("jumlah").value = jumlah;
+    document.getElementById("persen").value = persen;
+    document.getElementById("tanggal").value = tanggal;
+    document.getElementById("jatuh").value = jatuh;
+
+    editId = id;
+    document.getElementById("btnTambah").style.display="none";
+    document.getElementById("btnUpdate").style.display="inline";
+}
+
+window.updateData = async function(){
+    let nama = document.getElementById("nama").value;
+    let jumlah = Number(document.getElementById("jumlah").value);
+    let persen = Number(document.getElementById("persen").value);
+    let tanggal = document.getElementById("tanggal").value;
+    let jatuh = document.getElementById("jatuh").value;
+
+    let total = jumlah + (jumlah * persen / 100);
+
+    await updateDoc(doc(db, "smartdebt", editId), {
+        nama, jumlah, persen, total, tanggal, jatuh
+    });
+
+    editId = null;
+    document.getElementById("btnTambah").style.display="inline";
+    document.getElementById("btnUpdate").style.display="none";
 }
 
 window.lunas = async function(id){
@@ -82,13 +114,13 @@ function tampil(){
     onSnapshot(q, (snap)=>{
         let html="";
         let totalPiutang=0;
-        dataGlobal=[];
+        semuaData=[];
 
         snap.forEach((docSnap)=>{
             let d = docSnap.data();
             let id = docSnap.id;
 
-            dataGlobal.push(d);
+            semuaData.push({id,...d});
 
             if(d.status=="belum"){
                 totalPiutang += d.total;
@@ -102,10 +134,9 @@ function tampil(){
             <td>${d.total}</td>
             <td>${d.jatuh}</td>
             <td>${d.status}</td>
+            <td>${d.bukti ? `<img src="${d.bukti}" width="40">` : '-'}</td>
             <td>
-            ${d.bukti ? `<img src="${d.bukti}" width="40">` : '-'}
-            </td>
-            <td>
+            <button onclick="editData('${id}','${d.nama}','${d.jumlah}','${d.persen}','${d.tanggal}','${d.jatuh}')">Edit</button>
             <button onclick="lunas('${id}')">Lunas</button>
             <button onclick="hapus('${id}')">Hapus</button>
             </td>
@@ -115,14 +146,41 @@ function tampil(){
 
         document.getElementById("data").innerHTML = html;
         document.getElementById("total").innerText = totalPiutang;
-
         buatGrafik();
     });
 }
 
+window.cariNama = function(){
+    let keyword = document.getElementById("cari").value.toLowerCase();
+    let html="";
+
+    semuaData.forEach(d=>{
+        if(d.nama.toLowerCase().includes(keyword)){
+            html += `
+            <tr>
+            <td>${d.nama}</td>
+            <td>${d.jumlah}</td>
+            <td>${d.persen}%</td>
+            <td>${d.total}</td>
+            <td>${d.jatuh}</td>
+            <td>${d.status}</td>
+            <td>${d.bukti ? `<img src="${d.bukti}" width="40">` : '-'}</td>
+            <td>
+            <button onclick="editData('${d.id}','${d.nama}','${d.jumlah}','${d.persen}','${d.tanggal}','${d.jatuh}')">Edit</button>
+            <button onclick="lunas('${d.id}')">Lunas</button>
+            <button onclick="hapus('${d.id}')">Hapus</button>
+            </td>
+            </tr>
+            `;
+        }
+    });
+
+    document.getElementById("data").innerHTML = html;
+}
+
 window.exportPDF = function(){
     let isi = "LAPORAN PIUTANG\n\n";
-    dataGlobal.forEach(d=>{
+    semuaData.forEach(d=>{
         isi += `${d.nama} | ${d.total} | ${d.status}\n`;
     });
 
@@ -136,7 +194,7 @@ window.exportPDF = function(){
 function buatGrafik(){
     let belum=0, lunas=0;
 
-    dataGlobal.forEach(d=>{
+    semuaData.forEach(d=>{
         if(d.status=="belum") belum++;
         else lunas++;
     });
@@ -155,11 +213,43 @@ function buatGrafik(){
 </script>
 
 <style>
-body { font-family: Arial; background:#f5f5f5; padding:20px; }
-.card { background:white; padding:15px; margin-bottom:10px; border-radius:10px; }
-input, button { padding:8px; margin:5px; }
-table { width:100%; border-collapse: collapse; }
-th, td { border:1px solid #ddd; padding:8px; text-align:center; }
+body {
+font-family: Arial;
+background:#f5f5f5;
+padding:20px;
+}
+
+#app {
+background-image: url('https://res.cloudinary.com/dkisbfx29/image/upload/v1774598344/itpdm60zilltmg2hkqpl.png');
+background-size: cover;
+background-position: center;
+padding:20px;
+border-radius:10px;
+}
+
+.card {
+background: rgba(255,255,255,0.9);
+padding:15px;
+margin-bottom:10px;
+border-radius:10px;
+}
+
+input, button {
+padding:8px;
+margin:5px;
+}
+
+table {
+width:100%;
+border-collapse: collapse;
+background:white;
+}
+
+th, td {
+border:1px solid #ddd;
+padding:8px;
+text-align:center;
+}
 </style>
 </head>
 
@@ -168,9 +258,9 @@ th, td { border:1px solid #ddd; padding:8px; text-align:center; }
 <h2>SmartDebt System</h2>
 
 <div class="card" id="loginDiv">
-<h3>Login</h3>
-<input type="email" id="email">
-<input type="password" id="password">
+<h3>Login Admin</h3>
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="password" placeholder="Password">
 <button onclick="login()">Login</button>
 </div>
 
@@ -183,7 +273,13 @@ th, td { border:1px solid #ddd; padding:8px; text-align:center; }
 <input type="date" id="tanggal">
 <input type="date" id="jatuh">
 <input type="file" id="foto">
-<button onclick="tambah()">Tambah</button>
+<button onclick="tambah()" id="btnTambah">Tambah</button>
+<button onclick="updateData()" id="btnUpdate" style="display:none;">Update</button>
+</div>
+
+<div class="card">
+<input type="text" id="cari" placeholder="Cari Nama">
+<button onclick="cariNama()">Cari</button>
 </div>
 
 <div class="card">
