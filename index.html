@@ -18,6 +18,7 @@ const firebaseConfig = {
   messagingSenderId: "735623275511",
   appId: "1:735623275511:web:958e8c53470777745804f2"
 };
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -39,7 +40,6 @@ window.login = async function(){
 }
 
 window.tambah = async function(){
-
     let nama = document.getElementById("nama").value;
     let jumlah = Number(document.getElementById("jumlah").value);
     let persen = Number(document.getElementById("persen").value);
@@ -65,26 +65,14 @@ window.tambah = async function(){
     let buktiURL = "";
 
     if(file){
-        try{
-            const storageRef = ref(storage, 'bukti/' + file.name);
-            await uploadBytes(storageRef, file);
-            buktiURL = await getDownloadURL(storageRef);
-        }catch(e){}
+        const storageRef = ref(storage, 'bukti/' + file.name);
+        await uploadBytes(storageRef, file);
+        buktiURL = await getDownloadURL(storageRef);
     }
 
     await addDoc(collection(db, "smartdebt"), {
-        nama,
-        jumlah,
-        persen,
-        total,
-        cicilan,
-        tanggal,
-        tipe,
-        lama,
-        jatuh: jatuhTempo,
-        bukti: buktiURL,
-        status: "belum",
-        user
+        nama, jumlah, persen, total, cicilan, tanggal, tipe, lama,
+        jatuh: jatuhTempo, bukti: buktiURL, status: "belum", user
     });
 }
 
@@ -139,6 +127,17 @@ window.hapus = async function(id){
     await deleteDoc(doc(db, "smartdebt", id));
 }
 
+function getWarna(jatuh){
+    let today = new Date();
+    let jatuhDate = new Date(jatuh);
+    let diff = (jatuhDate - today) / (1000 * 60 * 60 * 24);
+
+    if(diff < 0) return "merah";
+    if(diff <= 3) return "merah";
+    if(diff <= 7) return "kuning";
+    return "hijau";
+}
+
 function tampil(){
     let user = auth.currentUser.email;
     const q = query(collection(db, "smartdebt"), where("user","==",user));
@@ -158,8 +157,10 @@ function tampil(){
                 totalPiutang += d.total;
             }
 
+            let warna = getWarna(d.jatuh);
+
             html += `
-            <tr>
+            <tr class="${warna}">
             <td>${d.nama}</td>
             <td>${d.jumlah}</td>
             <td>${d.persen}%</td>
@@ -185,37 +186,6 @@ function tampil(){
     });
 }
 
-window.cariNama = function(){
-    let keyword = document.getElementById("cari").value.toLowerCase();
-    let html="";
-
-    semuaData.forEach(d=>{
-        if(d.nama.toLowerCase().includes(keyword)){
-            html += `
-            <tr>
-            <td>${d.nama}</td>
-            <td>${d.jumlah}</td>
-            <td>${d.persen}%</td>
-            <td>${d.total}</td>
-            <td>${d.cicilan}</td>
-            <td>${d.tipe}</td>
-            <td>${d.lama}</td>
-            <td>${d.jatuh}</td>
-            <td>${d.status}</td>
-            <td>${d.bukti ? `<img src="${d.bukti}" width="40">` : '-'}</td>
-            <td>
-            <button onclick="editData('${d.id}','${d.nama}','${d.jumlah}','${d.persen}','${d.tanggal}','${d.tipe}','${d.lama}')">Edit</button>
-            <button onclick="lunas('${d.id}')">Lunas</button>
-            <button onclick="hapus('${d.id}')">Hapus</button>
-            </td>
-            </tr>
-            `;
-        }
-    });
-
-    document.getElementById("data").innerHTML = html;
-}
-
 function buatGrafik(){
     let belum=0, lunas=0;
 
@@ -229,10 +199,14 @@ function buatGrafik(){
 
     ctx.clearRect(0,0,300,150);
 
+    ctx.fillStyle = "red";
     ctx.fillRect(50,150-belum*20,50,belum*20);
+    ctx.fillStyle = "black";
     ctx.fillText("Belum",50,140);
 
+    ctx.fillStyle = "green";
     ctx.fillRect(150,150-lunas*20,50,lunas*20);
+    ctx.fillStyle = "black";
     ctx.fillText("Lunas",150,140);
 }
 </script>
@@ -240,27 +214,35 @@ function buatGrafik(){
 <style>
 body {
 font-family: Arial;
-background:#f5f5f5;
-padding:20px;
+background: linear-gradient(120deg,#2980b9,#6dd5fa);
+margin:0;
 }
 
-#app {
-background-image: url('https://res.cloudinary.com/dkisbfx29/image/upload/v1774598344/itpdm60zilltmg2hkqpl.png');
-background-size: cover;
-padding:20px;
-border-radius:10px;
+.container {
+width:95%;
+margin:auto;
 }
 
 .card {
-background: rgba(255,255,255,0.9);
+background:white;
 padding:15px;
-margin-bottom:10px;
+margin-top:10px;
 border-radius:10px;
+box-shadow:0 4px 10px rgba(0,0,0,0.2);
 }
 
 input, select, button {
-padding:8px;
+padding:10px;
 margin:5px;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
+button {
+background:#2980b9;
+color:white;
+border:none;
+cursor:pointer;
 }
 
 table {
@@ -274,12 +256,18 @@ border:1px solid #ddd;
 padding:8px;
 text-align:center;
 }
+
+.merah { background:#ffb3b3; }
+.kuning { background:#fff0b3; }
+.hijau { background:#b3ffb3; }
 </style>
 </head>
 
 <body>
 
-<h2>SmartDebt System</h2>
+<div class="container">
+
+<h2 style="color:white;">SmartDebt System</h2>
 
 <div class="card" id="loginDiv">
 <h3>Login Admin</h3>
@@ -309,11 +297,6 @@ text-align:center;
 </div>
 
 <div class="card">
-<input type="text" id="cari" placeholder="Cari Nama">
-<button onclick="cariNama()">Cari</button>
-</div>
-
-<div class="card">
 Total Piutang: <b id="total">0</b>
 </div>
 
@@ -338,6 +321,8 @@ Total Piutang: <b id="total">0</b>
 </thead>
 <tbody id="data"></tbody>
 </table>
+</div>
+
 </div>
 
 </div>
