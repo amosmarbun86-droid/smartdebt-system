@@ -11,14 +11,13 @@ import { getFirestore, collection, addDoc, query, where, onSnapshot, updateDoc, 
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const firebaseConfig = {
-  apiKey: "ISI_APIKEY_KAMU",
-  authDomain: "ISI_AUTHDOMAIN",
-  projectId: "ISI_PROJECTID",
-  storageBucket: "ISI_STORAGE",
-  messagingSenderId: "ISI",
-  appId: "ISI"
+  apiKey: "AIzaSyB4NeM9zeHT4SZEPv_pdAENHoZAi_MtDlw",
+  authDomain: "smartdebt-system.firebaseapp.com",
+  projectId: "smartdebt-system",
+  storageBucket: "smartdebt-system.firebasestorage.app",
+  messagingSenderId: "735623275511",
+  appId: "1:735623275511:web:958e8c53470777745804f2"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
