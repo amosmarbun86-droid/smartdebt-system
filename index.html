@@ -71,8 +71,12 @@ window.tambah = async function(){
     }
 
     await addDoc(collection(db, "smartdebt"), {
-        nama, jumlah, persen, total, cicilan, tanggal, tipe, lama,
-        jatuh: jatuhTempo, bukti: buktiURL, status: "belum", user
+        nama, jumlah, persen, total, cicilan,
+        tanggal, tipe, lama,
+        jatuh: jatuhTempo,
+        bukti: buktiURL,
+        status: "belum",
+        user
     });
 }
 
@@ -111,7 +115,8 @@ window.updateData = async function(){
     let jatuhTempo = tgl.toISOString().split('T')[0];
 
     await updateDoc(doc(db, "smartdebt", editId), {
-        nama, jumlah, persen, total, cicilan, tanggal, tipe, lama, jatuh: jatuhTempo
+        nama, jumlah, persen, total, cicilan,
+        tanggal, tipe, lama, jatuh: jatuhTempo
     });
 
     editId = null;
@@ -214,21 +219,25 @@ function buatGrafik(){
 <style>
 body {
 font-family: Arial;
-background: linear-gradient(120deg,#2980b9,#6dd5fa);
 margin:0;
+background-image: url('https://res.cloudinary.com/dkisbfx29/image/upload/v1774626849/mwmcs00cwjvitmcpmcpq.png');
+background-size: cover;
+background-position: center;
+background-attachment: fixed;
 }
 
 .container {
 width:95%;
 margin:auto;
+padding:10px;
 }
 
 .card {
-background:white;
+background: rgba(255,255,255,0.95);
 padding:15px;
 margin-top:10px;
-border-radius:10px;
-box-shadow:0 4px 10px rgba(0,0,0,0.2);
+border-radius:12px;
+box-shadow:0 4px 10px rgba(0,0,0,0.3);
 }
 
 input, select, button {
@@ -242,7 +251,6 @@ button {
 background:#2980b9;
 color:white;
 border:none;
-cursor:pointer;
 }
 
 table {
@@ -257,9 +265,9 @@ padding:8px;
 text-align:center;
 }
 
-.merah { background:#ffb3b3; }
-.kuning { background:#fff0b3; }
-.hijau { background:#b3ffb3; }
+.merah { background:#ffcccc; }
+.kuning { background:#fff5cc; }
+.hijau { background:#ccffcc; }
 </style>
 </head>
 
