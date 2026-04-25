@@ -65,7 +65,7 @@ window.tambah = async function(){
     let buktiURL = "";
 
     if(file){
-        const storageRef = ref(storage, 'bukti/' + file.name);
+        const storageRef = ref(storage, 'bukti/' + userId + '/' + file.name);
         await uploadBytes(storageRef, file);
         buktiURL = await getDownloadURL(storageRef);
     }
@@ -76,7 +76,7 @@ window.tambah = async function(){
         jatuh: jatuhTempo,
         bukti: buktiURL,
         status: "belum",
-        user
+        userId
     });
 }
 
@@ -145,8 +145,7 @@ function getWarna(jatuh){
 
 function tampil(){
     let userId = auth.currentUser.uid;
-    const q = query(collection(db, "smartdebt"), where("user","==",user));
-
+const q = query(collection(db, "smartdebt"), where("userId","==",userId));
     onSnapshot(q, (snap)=>{
         let html="";
         let totalPiutang=0;
