@@ -144,7 +144,7 @@ function getWarna(jatuh){
 }
 
 function tampil(){
-    let user = auth.currentUser.email;
+    let userId = auth.currentUser.uid;
     const q = query(collection(db, "smartdebt"), where("user","==",user));
 
     onSnapshot(q, (snap)=>{
