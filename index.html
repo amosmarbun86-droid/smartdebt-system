@@ -40,6 +40,7 @@ window.login = async function(){
 }
 
 window.tambah = async function(){
+window.tambah = async function(){
     let nama = document.getElementById("nama").value;
     let jumlah = Number(document.getElementById("jumlah").value);
     let persen = Number(document.getElementById("persen").value);
@@ -47,7 +48,9 @@ window.tambah = async function(){
     let tipe = document.getElementById("tipe").value;
     let lama = Number(document.getElementById("lama").value);
     let file = document.getElementById("foto").files[0];
-    let user = auth.currentUser.email;
+
+    // ✅ ambil UID user (WAJIB)
+    let userId = auth.currentUser.uid;
 
     let total = jumlah + (jumlah * persen / 100);
     let cicilan = Math.round(total / lama);
@@ -64,20 +67,38 @@ window.tambah = async function(){
 
     let buktiURL = "";
 
+    // ✅ upload file ke folder user masing-masing
     if(file){
         const storageRef = ref(storage, 'bukti/' + userId + '/' + file.name);
         await uploadBytes(storageRef, file);
         buktiURL = await getDownloadURL(storageRef);
     }
 
+    // ✅ simpan ke firestore
     await addDoc(collection(db, "smartdebt"), {
-        nama, jumlah, persen, total, cicilan,
-        tanggal, tipe, lama,
+        nama,
+        jumlah,
+        persen,
+        total,
+        cicilan,
+        tanggal,
+        tipe,
+        lama,
         jatuh: jatuhTempo,
         bukti: buktiURL,
         status: "belum",
-        userId
+        userId // WAJIB sesuai rules
     });
+
+    // 🔄 reset form biar bersih setelah tambah
+    document.getElementById("nama").value = "";
+    document.getElementById("jumlah").value = "";
+    document.getElementById("persen").value = "";
+    document.getElementById("tanggal").value = "";
+    document.getElementById("lama").value = "";
+    document.getElementById("foto").value = "";
+
+    alert("Data berhasil ditambahkan ✅");
 }
 
 window.editData = function(id,nama,jumlah,persen,tanggal,tipe,lama){
