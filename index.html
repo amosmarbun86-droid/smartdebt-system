@@ -49,7 +49,6 @@ window.tambah = async function(){
     let lama = Number(document.getElementById("lama").value);
     let file = document.getElementById("foto").files[0];
 
-    // ✅ ambil UID user (WAJIB)
     let userId = auth.currentUser.uid;
 
     let total = jumlah + (jumlah * persen / 100);
@@ -67,14 +66,38 @@ window.tambah = async function(){
 
     let buktiURL = "";
 
-    // ✅ upload file ke folder user masing-masing
+    // 🔥 UPLOAD KE CLOUDINARY
     if(file){
-        const storageRef = ref(storage, 'bukti/' + userId + '/' + file.name);
-        await uploadBytes(storageRef, file);
-        buktiURL = await getDownloadURL(storageRef);
+        try {
+            const CLOUD_NAME = "dkisbfx29";
+            const UPLOAD_PRESET = "ml_default";
+
+            let formData = new FormData();
+            formData.append("file", file);
+            formData.append("upload_preset", UPLOAD_PRESET);
+
+            let res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+                method: "POST",
+                body: formData
+            });
+
+            let data = await res.json();
+
+            if(data.secure_url){
+                buktiURL = data.secure_url;
+            } else {
+                alert("Upload gagal ❌");
+                console.log(data);
+                return;
+            }
+
+        } catch(e){
+            alert("Error upload: " + e.message);
+            console.log(e);
+            return;
+        }
     }
 
-    // ✅ simpan ke firestore
     await addDoc(collection(db, "smartdebt"), {
         nama,
         jumlah,
@@ -87,10 +110,10 @@ window.tambah = async function(){
         jatuh: jatuhTempo,
         bukti: buktiURL,
         status: "belum",
-        userId // WAJIB sesuai rules
+        userId
     });
 
-    // 🔄 reset form biar bersih setelah tambah
+    // reset form
     document.getElementById("nama").value = "";
     document.getElementById("jumlah").value = "";
     document.getElementById("persen").value = "";
@@ -100,7 +123,6 @@ window.tambah = async function(){
 
     alert("Data berhasil ditambahkan ✅");
 }
-
 window.editData = function(id,nama,jumlah,persen,tanggal,tipe,lama){
     document.getElementById("nama").value = nama;
     document.getElementById("jumlah").value = jumlah;
